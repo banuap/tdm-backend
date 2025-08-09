@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tdm-backend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tdm-backend
+  template:
+    metadata:
+      labels:
+        app: tdm-backend
+    spec:
+      imagePullSecrets:
+      - name: dockerhub-creds
+      containers:
+      - name: tdm-backend
+        image: banuparasuraman/tdm-backend:latest # <-- Changed to Docker Hub
+        ports:
+        - containerPort: 8100
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: POSTGRES_HOST
+          value: "postgres"
+        - name: POSTGRES_DB
+          value: "postgres"
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /etc/gcp/key.json
+        volumeMounts:
+        - name: google-creds-volume
+          mountPath: /etc/gcp
+          readOnly: true
+      volumes:
+      - name: google-creds-volume
+        secret:
+          secretName: google-creds
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tdm-backend-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: tdm-backend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8100
